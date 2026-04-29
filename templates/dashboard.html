@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrafficVision  Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:        #000000;
+      --card:      #0d0d0d;
+      --card2:     #111111;
+      --border:    #1e1e1e;
+      --orange:    #f59e0b;
+      --orange2:   #fbbf24;
+      --orange-dim:rgba(245,158,11,.1);
+      --text:      #f0f0f0;
+      --muted:     #888888;
+      --muted2:    #444444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Nav ── */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2.5%; border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,.95); backdrop-filter: blur(10px);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-logo { font-weight: 800; font-size: 1.1rem; color: var(--text); text-decoration: none; }
+    .nav-logo span { color: var(--orange); }
+    .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: .85rem; transition: color .2s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+    .nav-date { font-size: .8rem; color: var(--muted); }
+
+    /* ── Layout ── */
+    .page { padding: 1.6rem 2.5%; display: flex; flex-direction: column; gap: 1.4rem; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.2rem 1.4rem;
+    }
+    .card-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .3rem; }
+    .card-value { font-size: 2rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+    .card-sub   { font-size: .75rem; color: var(--muted); margin-top: .2rem; }
+
+    /* ── Grid rows ── */
+    .row { display: grid; gap: 1.2rem; }
+    .row-stats { grid-template-columns: 2fr 1fr 1fr 1fr; }
+    .row-mid   { grid-template-columns: 2fr 1fr; }
+    .row-bot   { grid-template-columns: 3fr 1fr; }
+
+    /* ── Greeting card ── */
+    .greeting-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.4rem 1.6rem; }
+    .greeting-card .hello { font-size: .85rem; color: var(--muted); font-weight: 500; }
+    .greeting-card .name  { font-size: 1.6rem; font-weight: 800; color: var(--text); margin-top: .1rem; }
+    .greeting-card p { font-size: .8rem; color: var(--muted); margin-top: .5rem; max-width: 280px; line-height: 1.6; }
+
+    /* ── Stat cards with sparkline ── */
+    .stat-card { position: relative; overflow: hidden; }
+    .stat-card .spark { height: 55px; margin-top: .6rem; }
+    .stat-card .icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--orange-dim); display: flex; align-items: center; justify-content: center;
+      margin-bottom: .6rem; font-size: 1.1rem;
+    }
+
+    /* ── Donut card ── */
+    .donut-wrap { position: relative; width: 90px; height: 90px; margin: .6rem auto 0; }
+    .donut-wrap canvas { width: 90px !important; height: 90px !important; }
+    .donut-center {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; pointer-events: none;
+    }
+    .donut-center .big { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .donut-center .sm  { font-size: .6rem; color: var(--muted); }
+
+    /* ── Chart cards ── */
+    .chart-card { padding: 1.4rem; }
+    .chart-card canvas { max-height: 260px; }
+    .chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .chart-head h6 { font-size: .9rem; font-weight: 600; color: var(--text); }
+    .badge-orange {
+      background: var(--orange-dim); color: var(--orange);
+      font-size: .7rem; padding: .2rem .7rem; border-radius: 99px; font-weight: 600;
+    }
+
+    /* ── Logs table ── */
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th { color: var(--muted); font-weight: 500; text-align: left; padding: .5rem .8rem;
+         border-bottom: 1px solid var(--border); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+    td { padding: .55rem .8rem; border-bottom: 1px solid rgba(53,48,30,.5); color: var(--text); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--orange-dim); }
+    .pill { display: inline-block; background: var(--orange-dim); color: var(--orange);
+            padding: .1rem .55rem; border-radius: 99px; font-size: .7rem; font-weight: 600; }
+    .btn-dl-row {
+      background: transparent; border: 1px solid var(--border); color: var(--muted);
+      padding: .2rem .6rem; border-radius: 6px; font-size: .72rem; cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-dl-row:hover { border-color: var(--orange); color: var(--orange); }
+
+    /* ── Download / action card ── */
+    .action-card { display: flex; flex-direction: column; gap: 1rem; }
+    .btn-download {
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      background: var(--orange); color: #0d0b06; font-weight: 700; font-size: .9rem;
+      padding: .85rem 1.2rem; border-radius: 10px; border: none; cursor: pointer;
+      transition: background .2s, transform .1s; text-decoration: none; width: 100%;
+    }
+    .btn-download:hover { background: var(--orange2); transform: translateY(-1px); }
+    .quick-stat { display: flex; justify-content: space-between; align-items: center;
+                  padding: .65rem .9rem; background: var(--card2); border-radius: 10px;
+                  border: 1px solid var(--border); }
+    .quick-stat .ql { font-size: .78rem; color: var(--muted); }
+    .quick-stat .qv { font-size: 1rem; font-weight: 700; color: var(--orange); }
+
+    /* ── No data ── */
+    .no-data { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+    .no-data a { color: var(--orange); text-decoration: none; }
+
+    @media (max-width: 1100px) {
+      .row-stats { grid-template-columns: 1fr 1fr; }
+      .row-mid, .row-bot { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .row-stats { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/"><Traffic<span>Vision</span></a>
+  <ul class="nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/app">App</a></li>
+    <li><a href="/dashboard" class="active">Dashboard</a></li>
+  </ul>
+  <div class="nav-date" id="nav-date"></div>
+</nav>
+
+<div class="page" id="main-content">
+
+  {% set sc = summary|tojson %}
+
+  <!-- ── Row 1 : stats ── -->
+  <div class="row row-stats">
+
+    <!-- Greeting -->
+    <div class="greeting-card">
+      <div class="hello" id="greeting-text">Good morning,</div>
+      <div class="name">Traffic Dashboard</div>
+      <p>Monitor, track and count road objects across all your processed scenes in one place.</p>
+    </div>
+
+    <!-- Total Objects -->
+    <div class="card stat-card" id="card-objects">
+      <div class="icon" style="font-size:.85rem;font-weight:700;color:var(--orange)">OBJ</div>
+      <div class="card-title">Total Objects</div>
+      <div class="card-value" id="val-objects">0</div>
+      <div class="card-sub">unique tracked across all scenes</div>
+      <canvas class="spark" id="spark-objects"></canvas>
+    </div>
+
+    <!-- Total Scenes -->
+    <div class="card stat-card">
+      <div class="icon" style="font-size:.85rem;font-weight:700;color:var(--orange)">VID</div>
+      <div class="card-title">Scenes Processed</div>
+      <div class="card-value" id="val-scenes">0</div>
+      <div class="card-sub">video logs available</div>
+      <canvas class="spark" id="spark-scenes"></canvas>
+    </div>
+
+    <!-- Top Class donut -->
+    <div class="card stat-card" style="text-align:center">
+      <div class="card-title">Class Distribution</div>
+      <div class="donut-wrap">
+        <canvas id="donut-class"></canvas>
+        <div class="donut-center">
+          <div class="big" id="donut-top">—</div>
+          <div class="sm">top class</div>
+        </div>
+      </div>
+      <div class="card-sub" style="margin-top:.5rem" id="donut-sub">No data yet</div>
+    </div>
+  </div>
+
+  <!-- ── Row 2 : scene comparison + timeline ── -->
+  <div class="row row-mid">
+    <div class="card chart-card">
+      <div class="chart-head">
+        <h6>Scene Comparison — Unique Counts</h6>
+        <span class="badge-orange">All scenes</span>
+      </div>
+      <canvas id="bar-scenes"></canvas>
+    </div>
+
+    <div class="card chart-card">
+      <div class="chart-head">
+        <h6>Top Classes</h6>
+        <span class="badge-orange">Global</span>
+      </div>
+      <canvas id="bar-classes"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Row 3 : timeline ── -->
+  <div class="card chart-card">
+    <div class="chart-head">
+      <h6>Traffic Intensity Over Time</h6>
+      <span class="badge-orange" id="timeline-scene-label">All scenes</span>
+    </div>
+    <canvas id="timeline-chart" style="max-height:220px"></canvas>
+  </div>
+
+  <!-- ── Row 4 : logs table + download ── -->
+  <div class="row row-bot">
+
+    <!-- Logs table -->
+    <div class="card" style="padding:1.2rem">
+      <div class="chart-head" style="margin-bottom:.8rem">
+        <h6>Processed Scenes</h6>
+        <span class="badge-orange" id="scene-count-badge">0 scenes</span>
+      </div>
+      <div id="no-data-msg" class="no-data" style="display:none">
+        No logs yet. <a href="/app">Process a video first →</a>
+      </div>
+      <table id="logs-table">
+        <thead>
+          <tr>
+            <th>Scene</th>
+            <th>Cars</th>
+            <th>Persons</th>
+            <th>Trucks</th>
+            <th>Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="logs-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Download card -->
+    <div class="card action-card">
+      <div>
+        <div class="card-title">Export Dataset</div>
+        <div style="font-size:.8rem; color:var(--muted); margin-top:.3rem; line-height:1.6">
+          Download all detection logs as a ZIP archive (CSV format, shared schema).
+        </div>
+      </div>
+      <a href="/download_dataset" class="btn-download">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Dataset
+      </a>
+      <div class="quick-stat">
+        <span class="ql">Total objects</span>
+        <span class="qv" id="qs-objects">0</span>
+      </div>
+      <div class="quick-stat">
+        <span class="ql">Total scenes</span>
+        <span class="qv" id="qs-scenes">0</span>
+      </div>
+      <div class="quick-stat">
+        <span class="ql">Top class</span>
+        <span class="qv" id="qs-top">—</span>
+      </div>
+    </div>
+  </div>
+</div><!-- /page -->
+
+<script>
+// ── Data from server 
+const scenes  = {{ scenes|safe }};
+const summary = {{ summary|safe }};
+
+const ORANGE  = '#f59e0b';
+const ORANGE2 = '#fbbf24';
+const ORANGE3 = 'rgba(245,158,11,.18)';
+const COLORS  = ['#f59e0b','#fbbf24','#d97706','#92400e','#78350f','#f97316','#fb923c'];
+const GRID    = '#2a2518';
+const TICK    = '#7a7060';
+
+// ── Greeting 
+const h = new Date().getHours();
+const greet = h < 12 ? 'Good morning,' : h < 18 ? 'Good afternoon,' : 'Good evening,';
+document.getElementById('greeting-text').textContent = greet;
+document.getElementById('nav-date').textContent = new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'short', year:'numeric'});
+
+// ── Fill summary ──────────────────────────────────────────────────────────
+document.getElementById('val-objects').textContent  = summary.total_objects || 0;
+document.getElementById('val-scenes').textContent   = summary.total_scenes  || 0;
+document.getElementById('qs-objects').textContent   = summary.total_objects || 0;
+document.getElementById('qs-scenes').textContent    = summary.total_scenes  || 0;
+document.getElementById('qs-top').textContent       = summary.top_class     || '—';
+document.getElementById('scene-count-badge').textContent = (summary.total_scenes || 0) + ' scenes';
+
+// ── No data state ─────────────────────────────────────────────────────────
+if (!scenes.length) {
+  document.getElementById('no-data-msg').style.display = 'block';
+  document.getElementById('logs-table').style.display  = 'none';
+}
+
+// ── Sparkline helper ──────────────────────────────────────────────────────
+function sparkLine(id, data, color) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map((_, i) => i),
+      datasets: [{ data, borderColor: color, backgroundColor: color.replace(')', ',.15)').replace('rgb','rgba'),
+                   fill: true, tension: .4, pointRadius: 0, borderWidth: 2 }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } },
+               scales: { x: { display: false }, y: { display: false } } }
+  });
+}
+
+// ── Dummy sparklines (replace with real data if available) ────────────────
+const objData    = scenes.map(s => Object.values(s.counts).reduce((a,b)=>a+b, 0));
+const sceneRange = scenes.map((_, i) => i + 1);
+if (objData.length)    sparkLine('spark-objects', objData, ORANGE);
+if (sceneRange.length) sparkLine('spark-scenes', sceneRange, ORANGE2);
+
+// ── Donut class distribution ──────────────────────────────────────────────
+const classTotals = summary.class_totals || {};
+const donutLabels = Object.keys(classTotals);
+const donutData   = Object.values(classTotals);
+const topClass    = summary.top_class || '—';
+document.getElementById('donut-top').textContent = topClass.slice(0,3);
+document.getElementById('donut-sub').textContent = topClass + ' most seen';
+
+if (donutLabels.length) {
+  new Chart(document.getElementById('donut-class'), {
+    type: 'doughnut',
+    data: {
+      labels: donutLabels,
+      datasets: [{ data: donutData, backgroundColor: COLORS, borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      cutout: '68%', responsive: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => ` ${ctx.label}: ${ctx.raw}`
+      }}}
+    }
+  });
+} else {
+  new Chart(document.getElementById('donut-class'), {
+    type: 'doughnut',
+    data: { labels: ['No data'], datasets: [{ data: [1], backgroundColor: ['#2a2518'], borderWidth: 0 }] },
+    options: { cutout: '68%', responsive: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+  });
+}
+
+// ── Scene comparison bar chart 
+const allClasses = [...new Set(scenes.flatMap(s => Object.keys(s.counts)))];
+if (scenes.length) {
+  new Chart(document.getElementById('bar-scenes'), {
+    type: 'bar',
+    data: {
+      labels: scenes.map(s => s.name.length > 20 ? s.name.slice(0,20)+'…' : s.name),
+      datasets: allClasses.map((cls, i) => ({
+        label: cls,
+        data: scenes.map(s => s.counts[cls] || 0),
+        backgroundColor: COLORS[i % COLORS.length],
+        borderRadius: 5,
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: TICK, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: TICK }, grid: { color: GRID } },
+        y: { ticks: { color: TICK }, grid: { color: GRID }, beginAtZero: true }
+      }
+    }
+  });
+} else {
+  emptyChart('bar-scenes');
+}
+
+// ── Top classes bar 
+if (donutLabels.length) {
+  new Chart(document.getElementById('bar-classes'), {
+    type: 'bar',
+    data: {
+      labels: donutLabels,
+      datasets: [{
+        data: donutData,
+        backgroundColor: COLORS,
+        borderRadius: 6,
+        barPercentage: .6,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: TICK }, grid: { color: GRID }, beginAtZero: true },
+        y: { ticks: { color: TICK }, grid: { color: GRID } }
+      }
+    }
+  });
+} else {
+  emptyChart('bar-classes');
+}
+
+// ── Timeline chart ────────────────────────────────────────────────────────
+if (scenes.length) {
+  const allBuckets = [...new Set(scenes.flatMap(s => Object.keys(s.timeline).map(Number)))].sort((a,b)=>a-b);
+  const timelineClasses = [...new Set(scenes.flatMap(s =>
+    Object.values(s.timeline).flatMap(b => Object.keys(b))))];
+
+  // Sum across all scenes per bucket per class
+  const merged = {};
+  scenes.forEach(s => {
+    Object.entries(s.timeline).forEach(([bucket, clsMap]) => {
+      Object.entries(clsMap).forEach(([cls, cnt]) => {
+        if (!merged[bucket]) merged[bucket] = {};
+        merged[bucket][cls] = (merged[bucket][cls] || 0) + cnt;
+      });
+    });
+  });
+
+  new Chart(document.getElementById('timeline-chart'), {
+    type: 'line',
+    data: {
+      labels: allBuckets.map(b => b + 's'),
+      datasets: timelineClasses.map((cls, i) => ({
+        label: cls,
+        data: allBuckets.map(b => (merged[String(b)] || {})[cls] || 0),
+        borderColor: COLORS[i % COLORS.length],
+        backgroundColor: COLORS[i % COLORS.length].replace('#','') + '20',
+        fill: true, tension: .35, pointRadius: 2, borderWidth: 2,
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: TICK, font: { size: 11 } } } },
+      scales: {
+        x: { title: { display: true, text: 'Time (s)', color: TICK }, ticks: { color: TICK }, grid: { color: GRID } },
+        y: { title: { display: true, text: 'Detections', color: TICK }, ticks: { color: TICK }, grid: { color: GRID }, beginAtZero: true }
+      }
+    }
+  });
+} else {
+  emptyChart('timeline-chart');
+}
+
+// ── Logs table 
+const tbody = document.getElementById('logs-body');
+scenes.forEach(s => {
+  const total = Object.values(s.counts).reduce((a,b)=>a+b, 0);
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><strong>${s.name}</strong></td>
+    <td>${s.counts.car || 0}</td>
+    <td>${s.counts.person || 0}</td>
+    <td>${s.counts.truck || 0}</td>
+    <td><span class="pill">${total}</span></td>
+    <td><button class="btn-dl-row" onclick="window.location='/download_dataset'">↓</button></td>
+  `;
+  tbody.appendChild(tr);
+});
+
+// ── Helper: empty chart ───────────────────────────────────────────────────
+function emptyChart(id) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: { labels: ['No data'], datasets: [{ data: [0], backgroundColor: GRID }] },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { ticks: { color: TICK }, grid: { color: GRID } },
+                y: { ticks: { color: TICK }, grid: { color: GRID }, beginAtZero: true } }
+    }
+  });
+}
+</script>
+</body>
+</html>

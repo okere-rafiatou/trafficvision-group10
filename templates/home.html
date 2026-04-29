@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrafficVision  Real-Time Detection</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #000000;
+      color: #f0f0f0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Navbar ── */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.4rem 6%;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(0,0,0,.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(245,158,11,.12);
+    }
+    .nav-logo { font-size: 1.25rem; font-weight: 700; color: #fff; text-decoration: none; }
+    .nav-logo span { color: #f59e0b; }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a { color: #ccc; text-decoration: none; font-size: .9rem; transition: color .2s; }
+    .nav-links a:hover { color: #fff; }
+    .nav-cta {
+      background: #f59e0b; color: #fff; padding: .5rem 1.4rem;
+      border-radius: 50px; text-decoration: none; font-size: .9rem;
+      font-weight: 600; transition: background .2s;
+    }
+    .nav-cta:hover { background: #d97706; }
+
+    /* ── Hero ── */
+    .hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4rem 6% 5rem;
+      min-height: calc(100vh - 70px);
+      gap: 2rem;
+    }
+
+    /* Left */
+    .hero-left { flex: 1; max-width: 560px; }
+    .hero-left h1 {
+      font-size: clamp(2rem, 4.5vw, 3.4rem);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 1.2rem;
+    }
+    .hero-left p {
+      color: #888888;
+      font-size: 1rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+      max-width: 440px;
+    }
+    .explore-wrap { display: inline-flex; flex-direction: column; align-items: center; gap: .45rem; }
+    .explore-hint {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      color: #f59e0b; font-size: .75rem; font-weight: 600; letter-spacing: .05em;
+      animation: bounce 1.5s ease-in-out infinite;
+    }
+    .explore-hint svg { display: block; }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-5px); }
+    }
+    .btn-explore {
+      display: inline-block;
+      background: #f59e0b;
+      color: #0d0b06;
+      padding: .85rem 2.4rem;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: background .2s, transform .15s;
+      box-shadow: 0 4px 24px rgba(245,158,11,.4);
+    }
+    .btn-explore:hover { background: #d97706; color: #fff; transform: translateY(-2px); }
+
+    /* Stats row */
+    .stats { display: flex; gap: 2.5rem; margin-top: 3rem; }
+    .stat-item h3 { font-size: 1.6rem; font-weight: 800; color: #fff; }
+    .stat-item p { font-size: .8rem; color: #7c7c9c; margin-top: .15rem; }
+
+    /* Right — blob + video */
+    .hero-right {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .blob-outer {
+      padding: 18px;
+      border-radius: 68% 32% 52% 48% / 55% 42% 58% 45%;
+      border: 2px dashed rgba(245,158,11,.45);
+      animation: morph 9s ease-in-out infinite;
+    }
+    .blob {
+      width: 420px;
+      height: 420px;
+      border-radius: 68% 32% 52% 48% / 55% 42% 58% 45%;
+      background: #f59e0b;
+      overflow: hidden;
+      animation: morph 9s ease-in-out infinite;
+      position: relative;
+    }
+    .blob video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: .9;
+    }
+    @keyframes morph {
+      0%, 100% { border-radius: 68% 32% 52% 48% / 55% 42% 58% 45%; }
+      33%       { border-radius: 40% 60% 65% 35% / 48% 58% 42% 52%; }
+      66%       { border-radius: 55% 45% 38% 62% / 62% 35% 65% 38%; }
+    }
+
+    @media (max-width: 900px) {
+      .hero { flex-direction: column; padding-top: 2rem; text-align: center; }
+      .hero-left p { max-width: 100%; }
+      .stats { justify-content: center; }
+      .blob { width: 300px; height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav>
+  <a class="nav-logo" href="/"><Traffic<span>Vision</span></a>
+  <ul class="nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/app">App</a></li>
+    <li><a href="/dashboard">Dashboard</a></li>
+  </ul>
+  <a class="nav-cta" href="/app">Launch App</a>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-left">
+    <h1>Detect &amp; Track<br>Traffic in a<br>New Smart Way</h1>
+    <p>
+      A real-time computer vision system that detects, tracks, and counts
+      road-traffic objects across multiple video scenes  powered by YOLOv11
+      and ByteTrack.
+    </p>
+    <div class="explore-wrap">
+      <div class="explore-hint">
+        <span>click here</span>
+        <!-- down arrow -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
+        </svg>
+      </div>
+      <a href="/app" class="btn-explore">Explore</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <h3>6+</h3>
+        <p>Object classes</p>
+      </div>
+      <div class="stat-item">
+        <h3>YOLOv11</h3>
+        <p>Detection model</p>
+      </div>
+      <div class="stat-item">
+        <h3>Live</h3>
+        <p>Real-time stream</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="blob-outer">
+      <div class="blob">
+        <video autoplay loop muted playsinline>
+          <source src="/data/traffic.mp4" type="video/mp4" />
+          <source src="/data/traffic-sign-test.mp4" type="video/mp4" />
+        </video>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

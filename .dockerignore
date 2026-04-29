@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+__MACOSX/
+.git/
+.idea/
+uploads/
+logs/
+outputs/
+*.avi

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrafficVision App</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #000000; color: #e0e0e0; }
+    nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 5%; background: rgba(0,0,0,.95);
+      border-bottom: 1px solid rgba(245,158,11,.12);
+      backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100;
+    }
+    .nav-logo { font-weight: 700; font-size: 1.1rem; color: #fff; text-decoration: none; }
+    .nav-logo span { color: #f59e0b; }
+    .nav-links { display: flex; gap: 1.5rem; list-style: none; margin: 0; padding: 0; }
+    .nav-links a { color: #bbb; text-decoration: none; font-size: .9rem; }
+    .nav-links a:hover { color: #fff; }
+
+    .card { background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 12px; }
+
+    /* Tabs */
+    .nav-tabs { border-bottom: 1px solid #0d0d0d; }
+    .nav-tabs .nav-link { color: #888; border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: .6rem 1.2rem; }
+    .nav-tabs .nav-link.active { color: #f59e0b; border-bottom-color: #f59e0b; background: transparent; }
+    .nav-tabs .nav-link:hover { color: #bbb; }
+
+    /* Stream box */
+    #stream-box {
+      background: #000; min-height: 380px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px; overflow: hidden; position: relative;
+    }
+    #stream-img { max-width: 100%; max-height: 480px; display: none; }
+    #no-obj-overlay {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(220,38,38,.85); color: #fff; padding: .3rem .8rem;
+      border-radius: 6px; font-size: .8rem; display: none;
+    }
+
+    /* Counters */
+    .count-card { background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 10px; padding: .8rem; text-align: center; }
+    .count-card .num { font-size: 2rem; font-weight: 700; color: #f59e0b; }
+    .count-card .lbl { font-size: .75rem; color: #888; }
+
+    /* Buttons */
+    .btn-purple { background: #f59e0b; border: none; color: #0d0b06; font-weight: 600; border-radius: 8px; }
+    .btn-purple:hover { background: #d97706; color: #0d0b06; }
+    .btn-stop { background: #dc2626; border: none; color: #fff; font-weight: 600; border-radius: 8px; }
+    .btn-stop:hover { background: #b91c1c; color: #fff; }
+
+    /* Progress */
+    .progress { height: 5px; background: #0d0d0d; border-radius: 99px; }
+    .progress-bar { background: #f59e0b; border-radius: 99px; }
+
+    .form-control, .form-select {
+      background: #0d0d0d; border: 1px solid #1e1e1e; color: #e0e0e0; border-radius: 8px;
+    }
+    .form-control:focus, .form-select:focus {
+      background: #0d0d0d; border-color: #f59e0b; color: #e0e0e0; box-shadow: none;
+    }
+    .form-check-input:checked { background-color: #f59e0b; border-color: #f59e0b; }
+    label { color: #bbb; font-size: .85rem; }
+    .alert-info-dark { background: #0d0d0d; border: 1px solid #1e1e1e; color: #aaa; font-size: .82rem; border-radius: 8px; }
+
+
+    /* ── Webcam tab ── */
+    .webcam-status {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .82rem; margin-top: .8rem; padding: .5rem .8rem;
+      border-radius: 8px; background: #0d0d0d; border: 1px solid #1e1e1e;
+    }
+    .webcam-status .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #555; flex-shrink: 0;
+    }
+    .webcam-status.granted .dot { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .webcam-status.denied  .dot { background: #ef4444; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/"><Traffic<span>Vision</span></a>
+  <ul class="nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/app">App</a></li>
+    <li><a href="/dashboard">Dashboard</a></li>
+  </ul>
+</nav>
+
+<div class="container-fluid py-4 px-4">
+  <div class="row g-4">
+
+    <!-- Left panel -->
+    <div class="col-lg-4">
+      <div class="card p-3 h-100">
+
+        <!-- Source tabs -->
+        <ul class="nav nav-tabs mb-3" id="sourceTabs">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-file">File</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-youtube">YouTube</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-webcam">Webcam</button></li>
+        </ul>
+
+        <div class="tab-content">
+
+          <!-- File upload -->
+          <div class="tab-pane fade show active" id="tab-file">
+            <form id="file-form">
+              <div class="mb-3">
+                <label class="form-label">Scene name <span style="color:#888;font-size:.75rem">(e.g. intersection_A)</span></label>
+                <input type="text" class="form-control" name="scene_name" placeholder="intersection_A" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Video file</label>
+                <input type="file" class="form-control" name="video" accept="video/*" required />
+              </div>
+              <div class="mb-3" id="class-check-file">{% include 'partials/class_checks.html' ignore missing %}</div>
+              <div id="class-boxes-file">
+                {% for cls in classes %}
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input cls-check" type="checkbox" name="classes" value="{{ cls }}" checked />
+                  <label class="form-check-label">{{ cls }}</label>
+                </div>
+                {% endfor %}
+              </div>
+              <button type="submit" class="btn btn-purple w-100 mt-3" id="file-btn">Start</button>
+            </form>
+          </div>
+
+          <!-- YouTube -->
+          <div class="tab-pane fade" id="tab-youtube">
+            <form id="yt-form">
+              <div class="mb-3">
+                <label class="form-label">YouTube URL</label>
+                <input type="url" class="form-control" name="url" placeholder="https://www.youtube.com/watch?v=..." required />
+              </div>
+              <div class="mb-1"><label class="form-label">Classes</label></div>
+              {% for cls in classes %}
+              <div class="form-check form-check-inline">
+                <input class="form-check-input cls-check" type="checkbox" name="classes" value="{{ cls }}" checked />
+                <label class="form-check-label">{{ cls }}</label>
+              </div>
+              {% endfor %}
+              <div class="alert-info-dark p-2 mt-3 rounded">
+                Requires <code>yt-dlp</code> installed. Video will be downloaded first.
+              </div>
+              <button type="submit" class="btn btn-purple w-100 mt-3" id="yt-btn">Download &amp; Detect</button>
+            </form>
+          </div>
+
+          <!-- Webcam -->
+          <div class="tab-pane fade" id="tab-webcam">
+            <div class="mb-1"><label class="form-label">Classes to detect</label></div>
+            {% for cls in classes %}
+            <div class="form-check form-check-inline">
+              <input class="form-check-input cls-check" type="checkbox" name="classes" value="{{ cls }}" checked />
+              <label class="form-check-label">{{ cls }}</label>
+            </div>
+            {% endfor %}
+
+            <div class="webcam-status mt-3" id="webcam-status">
+              <span class="dot"></span>
+              <span id="webcam-status-text">Waiting for permission…</span>
+            </div>
+
+            <button type="button" class="btn btn-purple w-100 mt-3" id="webcam-btn">
+              Start Webcam
+            </button>
+          </div>
+
+        </div><!-- /tab-content -->
+
+        <!-- Shared controls -->
+        <div class="mt-3 d-flex gap-2">
+          <button type="button" class="btn btn-stop flex-fill" id="stop-btn" disabled>Stop</button>
+          <button type="button" class="btn btn-outline-secondary flex-fill" id="reset-btn">Reset</button>
+        </div>
+
+        <div id="status-msg" class="mt-2 small text-muted"></div>
+        <div id="error-msg" class="alert alert-danger mt-2 py-1 small mb-0" style="display:none"></div>
+
+        <div class="mt-3" id="progress-wrap" style="display:none">
+          <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+          <div class="small text-muted mt-1" id="progress-label">0 / 0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right panel: stream + counters -->
+    <div class="col-lg-8">
+      <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0 fw-bold">Live Stream</h6>
+          <span id="live-badge" class="badge bg-secondary">IDLE</span>
+        </div>
+        <div id="stream-box">
+          <span class="text-muted" id="placeholder-text">Choose a source and start detection</span>
+          <span class="text-muted" id="loading-text" style="display:none">Model loading, please wait…</span>
+          <img id="stream-img" src="" alt="stream" />
+          <div id="no-obj-overlay">No objects detected</div>
+        </div>
+      </div>
+
+      <div class="card p-3">
+        <h6 class="fw-bold mb-3">Unique Object Counts</h6>
+        <div class="row g-2" id="counters">
+          {% for cls in classes %}
+          <div class="col-4 col-md-2">
+            <div class="count-card">
+              <div class="num" id="cnt_{{ cls }}">0</div>
+              <div class="lbl">{{ cls }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let polling = null;
+
+function getCheckedClasses(formEl) {
+  return [...formEl.querySelectorAll('.cls-check:checked')].map(el => el.value);
+}
+
+function startPolling() {
+  if (polling) clearInterval(polling);
+  polling = setInterval(updateStatus, 900);
+}
+
+async function updateStatus() {
+  const res = await fetch('/status');
+  const data = await res.json();
+
+  // Update counter cards
+  Object.entries(data.counts).forEach(([cls, cnt]) => {
+    const el = document.getElementById('cnt_' + cls);
+    if (el) el.textContent = cnt;
+  });
+
+  // No-object overlay
+  document.getElementById('no-obj-overlay').style.display = data.detected ? 'none' : 'block';
+
+  // Live badge
+  const badge = document.getElementById('live-badge');
+  if (data.processing) {
+    badge.className = 'badge bg-danger';
+    badge.textContent = 'LIVE';
+  } else {
+    badge.className = 'badge bg-secondary';
+    badge.textContent = 'IDLE';
+  }
+
+  // Progress
+  if (data.total_frames > 0) {
+    const pct = Math.round((data.current_frame / data.total_frames) * 100);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-label').textContent =
+      `Frame ${data.current_frame} / ${data.total_frames}`;
+  }
+
+  // Error
+  if (data.error) {
+    document.getElementById('error-msg').textContent = '' + data.error;
+    document.getElementById('error-msg').style.display = 'block';
+    stopUI();
+    return;
+  }
+
+  // Done
+  if (!data.processing && data.current_frame > 0 && data.total_frames > 0) {
+    clearInterval(polling);
+    document.getElementById('status-msg').textContent = ' Done — see Dashboard for logs';
+    stopUI();
+  }
+}
+
+let frameInterval = null;
+function startFramePolling() {
+  if (frameInterval) return;
+  const img = document.getElementById('stream-img');
+  document.getElementById('loading-text').style.display = 'block';
+  frameInterval = setInterval(() => {
+    fetch('/frame?' + Date.now())
+      .then(r => {
+        if (r.status === 204) return;
+        return r.blob();
+      })
+      .then(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          document.getElementById('loading-text').style.display = 'none';
+          img.style.display = 'block';
+        };
+        img.src = url;
+      });
+  }, 150);
+}
+function stopFramePolling() {
+  if (frameInterval) { clearInterval(frameInterval); frameInterval = null; }
+  document.getElementById('loading-text').style.display = 'none';
+}
+
+function startUI(msg) {
+  document.getElementById('status-msg').textContent = msg;
+  document.getElementById('error-msg').style.display = 'none';
+  document.getElementById('placeholder-text').style.display = 'none';
+  startFramePolling();
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('stop-btn').disabled = false;
+  ['file-btn','yt-btn','webcam-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+  startPolling();
+}
+
+function stopUI() {
+  stopFramePolling();
+  document.getElementById('stop-btn').disabled = true;
+  ['file-btn','yt-btn','webcam-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.disabled = false; el.textContent = el.dataset.label || el.textContent; }
+  });
+}
+
+async function postForm(url, formData) {
+  const res = await fetch(url, { method: 'POST', body: formData });
+  return res.json();
+}
+
+// ── File upload ──
+document.getElementById('file-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const data = await postForm('/process', form);
+  if (data.error) { showError(data.error); return; }
+  startUI('Processing video…');
+});
+
+// ── YouTube ──
+document.getElementById('yt-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  document.getElementById('status-msg').textContent = 'Downloading YouTube video…';
+  const data = await postForm('/process_youtube', form);
+  if (data.error) { showError(data.error); return; }
+  startUI('Download complete — detecting…');
+});
+
+// ── Webcam ───────────────────────────────────────────────────────────────
+const statusEl     = document.getElementById('webcam-status');
+const statusTextEl = document.getElementById('webcam-status-text');
+
+async function requestCameraAndStart() {
+  // Already running — do nothing
+  if (document.getElementById('live-badge').textContent === 'LIVE') return;
+
+  statusTextEl.textContent = 'Waiting for camera permission…';
+  statusEl.className = 'webcam-status mt-3';
+
+  let stream;
+  try {
+    // This triggers the native browser permission dialog
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  } catch (err) {
+    statusEl.classList.add('denied');
+    statusTextEl.textContent = err.name === 'NotAllowedError'
+      ? 'Camera access denied. Allow it in your browser settings.'
+      : 'Camera not found or unavailable.';
+    return;
+  }
+
+  // Permission granted — release browser stream (OpenCV handles it on server)
+  stream.getTracks().forEach(t => t.stop());
+
+  statusEl.classList.add('granted');
+  statusTextEl.textContent = 'Camera access granted — starting…';
+
+  const classes = [...document.querySelectorAll('#tab-webcam .cls-check:checked')].map(el => el.value);
+  const form = new FormData();
+  classes.forEach(c => form.append('classes', c));
+
+  const data = await postForm('/start_webcam', form);
+  if (data.error) {
+    statusEl.classList.remove('granted');
+    statusEl.classList.add('denied');
+    statusTextEl.textContent = 'Server error: ' + data.error;
+    showError(data.error);
+    return;
+  }
+
+  statusTextEl.textContent = 'Camera active — detecting objects';
+  document.getElementById('progress-wrap').style.display = 'none';
+  startUI('Webcam running…');
+}
+
+// Auto-trigger when tab is shown
+document.querySelector('[data-bs-target="#tab-webcam"]').addEventListener('shown.bs.tab', () => {
+  requestCameraAndStart();
+});
+
+// Manual button (retry)
+document.getElementById('webcam-btn').addEventListener('click', () => {
+  requestCameraAndStart();
+});
+
+// ── Stop ──
+document.getElementById('stop-btn').addEventListener('click', async () => {
+  await fetch('/stop', { method: 'POST' });
+  if (polling) clearInterval(polling);
+  document.getElementById('status-msg').textContent = 'Stopped.';
+  stopUI();
+});
+
+// ── Reset ──
+document.getElementById('reset-btn').addEventListener('click', async () => {
+  if (polling) clearInterval(polling);
+  stopFramePolling();
+  await fetch('/reset', { method: 'POST' });
+  document.getElementById('status-msg').textContent = '';
+  document.getElementById('error-msg').style.display = 'none';
+  document.getElementById('stream-img').style.display = 'none';
+  document.getElementById('stream-img').src = '';
+  document.getElementById('placeholder-text').style.display = 'block';
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('live-badge').className = 'badge bg-secondary';
+  document.getElementById('live-badge').textContent = 'IDLE';
+  document.querySelectorAll('.num').forEach(el => el.textContent = '0');
+  stopUI();
+});
+
+function showError(msg) {
+  document.getElementById('error-msg').textContent = '' + msg;
+  document.getElementById('error-msg').style.display = 'block';
+  stopUI();
+}
+</script>
+</body>
+</html>
